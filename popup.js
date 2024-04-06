@@ -63,7 +63,6 @@ window.addEventListener('DOMContentLoaded', async () => {
         })
 });
 
-
 function addSubmitButtonToTable(table) {
     let content = document.getElementById('torn-exchange-content');
     let submit_div = document.createElement('div');
