@@ -18,6 +18,51 @@ const setDOMInfo = info => {
 
 const zip = (a, b) => a.map((k, i) => [k, b[i]]);
 
+const handleApi = async data => {
+    if (data?.items == undefined) return console.log("TE - data is undefined")
+    
+    data = JSON.stringify(data);
+    let url = ENDPOINT + '/new_extension_get_prices'
+
+    let response = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json; charset=UTF-8'
+        },
+        body: data
+    })
+
+    let responseData = await response.json();
+
+    var domInfo = {
+        buyer_name: responseData.buyer_name,
+        image_url: responseData.image_url,
+        items: responseData.items,
+        market_prices: responseData.market_prices,
+        prices: responseData.prices,
+        profit_per_item: responseData.profit_per_item,
+        quantities: responseData.quantities,
+        seller_name: responseData.seller_name,
+    };
+
+    setDOMInfo(domInfo)
+}
+
+window.addEventListener('DOMContentLoaded', async () => {
+    // ...query for the active tab...
+    let tabs = await chrome.tabs.query({
+        active: true,
+        currentWindow: true
+    })
+
+    chrome.tabs
+        .sendMessage(tabs[0].id, { from: 'popup', subject: 'DOMInfo' })
+        .then(data => handleApi(data))
+        .catch(error => {
+            console.log("Error: ", error)
+        })
+});
+
 
 function addSubmitButtonToTable(table) {
     let content = document.getElementById('torn-exchange-content');
@@ -119,23 +164,6 @@ function createTable(data) {
     return table
 }
 
-// Once the DOM is ready...
-window.addEventListener('DOMContentLoaded', () => {
-    // ...query for the active tab...
-    chrome.tabs.query({
-        active: true,
-        currentWindow: true
-    }, tabs => {
-        // ...and send a request for the DOM info...
-        chrome.tabs.sendMessage(
-            tabs[0].id,
-            { from: 'popup', subject: 'DOMInfo' },
-            // ...also specifying a callback to be called 
-            //    from the receiving end (content script).
-            setDOMInfo);
-    });
-});
-
 function allowInputInPrice() {
     profit_divs = document.getElementsByClassName('profit');
     price_divs = document.getElementsByClassName('price');
@@ -163,29 +191,36 @@ function activateSubmitButton(info) {
     });
 }
 
-function submitTrade(info) {
+async function submitTrade(info) {
+    if (info == undefined) return console.log("TE - info is undefined.")
+    
     let prices = document.getElementsByClassName('price');
     let quantities = document.getElementsByClassName('quantity');
     let items = document.getElementsByClassName('item');
+
     prices = Array.from(prices).map(price => parseInt(price.innerText));
     quantities = Array.from(quantities).map(quantity => parseInt(quantity.innerText));
     items = Array.from(items).map(item => item.innerText);
+
     let data = JSON.stringify({
-        'owner_username': info['buyer_name'],
-        'owner_user_id': info['buyer_id'],
-        'seller_username': info['seller_name'],
+        'owner_username': info.buyer_name,
+        'owner_user_id': info.buyer_id,
+        'seller_username': info.seller_name,
         'prices': prices,
         'item_quantities': quantities,
         'item_names': items
     })
 
-    let request = new XMLHttpRequest();
-    request.open('POST', ENDPOINT + '/new_create_receipt', false);
-    request.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
+    let response = await fetch(ENDPOINT + '/new_create_receipt', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json; charset=UTF-8'
+        },
+        body: data
+    })
 
-    request.send(data);
+    let response_data = await response.json();
 
-    let response_data = JSON.parse(request.response);
     render_response(response_data);
 }
 
@@ -203,7 +238,7 @@ function render_response(response_data) {
     </div>
     `;
 
-    let response_text = formatTemplateNumbers(response_data['trade_message']);
+    let response_text = formatTemplateNumbers(response_data.trade_message);
     let copy_to_clipboard = document.getElementById('copy-to-clipboard');
     copy_to_clipboard.addEventListener('click', function () {
         writeToClipboard(response_text, (error) => {
