@@ -5,30 +5,9 @@ chrome.runtime.sendMessage({
     subject: 'showPageAction',
 });
 
-function getUsernameFromTradePage() {
-    let username = document.querySelector("div.user.left > div > div").innerText;
+console.log("Running TE content.")
 
-    if (username == null) {
-        document.querySelector("#sidebar > div:nth-child(1) > div > div > div > div > div > p > a").innerText;
-    }
-    return username;
-}
-
-function getSellerNameFromTradePage() {
-    let sellername = document.querySelector("div.user.right > div ").innerText;
-    sellername = sellername.replace('Hide item values', '');
-    sellername = sellername.trim();
-    return sellername;
-}
-
-function sanitizeItemName(itemName) {
-    const TTregex = /\$.*/;
-    let sanitized = itemName.replace(TTregex, '').trim().replaceAll('\n', '');
-    return sanitized;
-
-}
-
-chrome.runtime.onMessage.addListener((msg, sender, response) => {
+chrome.runtime.onMessage.addListener((msg) => {
     // First, validate the message's structure.
     if ((msg.from === 'popup') && (msg.subject === 'DOMInfo')) {
         // Collect the necessary data. 
@@ -74,25 +53,35 @@ chrome.runtime.onMessage.addListener((msg, sender, response) => {
             }
 
             responseData = getPricesFromPlayerApi(items, quantities, sellerName, userName);
-
-            var domInfo = {
-                buyer_name: responseData.buyer_name,
-                image_url: responseData.image_url,
-                items: responseData.items,
-                market_prices: responseData.market_prices,
-                prices: responseData.prices,
-                profit_per_item: responseData.profit_per_item,
-                quantities: responseData.quantities,
-                seller_name: responseData.seller_name,
-            };
-
         }
 
-        // Directly respond to the sender (popup), 
+        // Directly respond to the sender (popup),
         // through the specified callback.
-        response(domInfo);
+        return Promise.resolve(responseData)
     }
 });
+
+function getUsernameFromTradePage() {
+    let username = document.querySelector("div.user.left > div > div").innerText;
+    if (username == null) {
+        document.querySelector("#sidebar > div:nth-child(1) > div > div > div > div > div > p > a").innerText;
+    }
+    return username;
+}
+
+function getSellerNameFromTradePage() {
+    let sellername = document.querySelector("div.user.right > div ").innerText;
+    sellername = sellername.replace('Hide item values', '');
+    sellername = sellername.trim();
+    return sellername;
+}
+
+function sanitizeItemName(itemName) {
+    const TTregex = /\$.*/;
+    let sanitized = itemName.replace(TTregex, '').trim().replaceAll('\n', '');
+    return sanitized;
+
+}
 
 
 function getPricesFromPlayerApi(items, quantities, sellerName, userName) {
@@ -102,14 +91,6 @@ function getPricesFromPlayerApi(items, quantities, sellerName, userName) {
         "user_name": userName,
         "seller_name": sellerName
     }
-    data = JSON.stringify(data);
-    let url = ENDPOINT + '/new_extension_get_prices'
-    let request = new XMLHttpRequest();
-
-    request.open('POST', url, false);
-    request.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
-    request.send(data);
-    var responseData = JSON.parse(request.response);
-
-    return responseData
+   
+    return data;
 }
